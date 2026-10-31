@@ -17,7 +17,7 @@ understand the agent loop (perceive → decide → act) in its smallest form.
 
 ```bash
 python -m organizer                       # runs the built-in demo
-python -m unittest discover -s tests -v   # runs the tests
+python -m unittest discover -s tests -v   # runs the tests (20)
 ```
 
 (On Windows, use `py` instead of `python`.)
@@ -28,19 +28,58 @@ python -m unittest discover -s tests -v   # runs the tests
 from organizer import OrganizerAgent
 
 agent = OrganizerAgent("/path/to/messy/folder")
-agent.run_once()
+agent.run_once()                  # organize once
+agent.run_once(dry_run=True)      # preview only — moves nothing
+agent.run_once(ask=True)          # ask on name clashes: overwrite/rename/skip
+agent.watch(interval=2.0)         # keep organizing as files arrive (Ctrl+C stops)
+agent.undo()                      # reverse everything, using the log
 ```
 
-Categories (by extension): Images, Documents, Audio, Video, Archives,
-Code — everything else goes to Others. Every action is appended to
-`organizer_log.txt` in the watched folder.
+## How it decides
 
-## Status
+First match wins:
 
-Starter skeleton: the one-pass loop, rules table, safe move, and logging
-work, with 6 passing tests. Watch mode, dry-run, name-based rules, undo,
-config-file rules, and ask-before-overwrite are guided extension tasks —
-see `EXTEND.md`.
+1. **Name rules** — a keyword in the filename: `invoice` → Finance,
+   `screenshot` → Images, `wallpaper` → Images, `resume` → Documents
+2. **Extension rules** — `.jpg` → Images, `.pdf` → Documents, `.mp3` →
+   Audio, `.mp4` → Video, `.zip` → Archives, `.py` → Code, …
+3. Everything else → **Others**
+
+## Custom rules (rules.json)
+
+Drop a `rules.json` into the watched folder to replace the built-in
+rules — no code changes needed:
+
+```json
+{
+  "categories": {"Games": [".exe"], "Pics": [".jpg", ".png"]},
+  "name_rules": {"invoice": "Finance"}
+}
+```
+
+## Safety
+
+- **Never overwrites** an existing file unless you explicitly choose
+  "overwrite" in ask mode (rename adds ` (1)`, ` (2)`, … instead).
+- Never moves its own log file or its `rules.json`.
+- Every action is appended to `organizer_log.txt` — and the log is what
+  makes **undo** possible.
+- A `rules.json` with a dangerous category name (path separators, `..`)
+  is rejected, so destinations can never escape the watched folder.
+- A file deleted mid-run is logged as VANISHED instead of crashing.
+
+## Project layout
+
+```
+organizer/
+  rules.py    the classification table + classify()
+  agent.py    OrganizerAgent: perceive / decide / act / log, watch, undo
+  __main__.py the demo
+tests/
+  test_organizer.py   20 tests covering every feature above
+EXTEND.md     ideas for v2
+LEARNING-NOTES.md   the concepts behind the code
+```
 
 ## License
 

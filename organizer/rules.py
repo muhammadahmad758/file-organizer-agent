@@ -1,8 +1,13 @@
-"""Classification rules: which file extensions belong to which category.
+"""Classification rules: how the agent decides where a file belongs.
 
-This is the agent's "knowledge" — the table its decide() step reads.
-Keeping it in its own small module means you can change the agent's
-behaviour by editing data, not code.
+Decision order (first match wins):
+  1. NAME rules     — a keyword inside the filename (e.g. "invoice")
+  2. EXTENSION rules — the file's extension (e.g. ".pdf")
+  3. DEFAULT_CATEGORY ("Others")
+
+The rules are DATA, not code: the agent can load a different table from
+a rules.json file (see agent.py), so behaviour can change without
+touching the program.
 """
 
 from pathlib import Path
@@ -16,17 +21,30 @@ RULES = {
     "Code": {".py", ".java", ".cpp", ".js"},
 }
 
+# keyword (lowercase, substring match) -> category
+NAME_RULES = {
+    "invoice": "Finance",
+    "screenshot": "Images",
+    "wallpaper": "Images",
+    "resume": "Documents",
+}
+
 DEFAULT_CATEGORY = "Others"
 
 
-def classify(filename):
-    """Return the category folder name for a file, e.g. "Images".
+def classify(filename, rules=None, name_rules=None):
+    """Return the category folder name for a file, e.g. "Images"."""
+    rules = RULES if rules is None else rules
+    name_rules = NAME_RULES if name_rules is None else name_rules
 
-    Decision order (v1): file extension only, case-insensitive.
-    Unknown or missing extensions fall back to DEFAULT_CATEGORY.
-    """
+    lower_name = filename.lower()
+    for keyword, category in name_rules.items():
+        if keyword.lower() in lower_name:
+            return category
+
     ext = Path(filename).suffix.lower()
-    for category, extensions in RULES.items():
+    for category, extensions in rules.items():
         if ext in extensions:
             return category
+
     return DEFAULT_CATEGORY
